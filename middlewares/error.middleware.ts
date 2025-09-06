@@ -1,5 +1,6 @@
 import { HTTPException } from "hono/http-exception";
 import type { ErrorHandler } from "hono";
+import { ZodError } from "zod";
 // type ErrorHandler = (err:Error, c:Context) => Response | Promise<Response>
 
 export const errorHandler : ErrorHandler = (err, c) => {
@@ -7,6 +8,21 @@ export const errorHandler : ErrorHandler = (err, c) => {
     if (err instanceof HTTPException) {
         return err.getResponse();
     }
+
+    // zod errors
+    if (err instanceof ZodError) {
+        // format Zod errors nicely
+        const formatted = err.issues.map(e => ({
+            field: e.path.join("."),
+            message: e.message,
+        }));
+        return c.json(
+            { statusCode: 400, title: "ValidationError", errors: formatted },
+            400
+        );
+    }
+
+
     // Catch JSON parsing errors or other runtime errors
     if(err instanceof SyntaxError) {
         return c.json({
